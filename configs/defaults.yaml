@@ -1,0 +1,365 @@
+# Market Decoder Configuration
+
+# System Settings
+system:
+  name: "Market Decoder Pro"
+  version: "1.0.0"
+  environment: "production"
+  log_level: "INFO"
+  timezone: "Asia/Kolkata"
+
+# Market Settings
+market:
+  symbols:
+    primary: "NIFTY"
+    secondary: ["BANKNIFTY", "FINNIFTY"]
+    watchlist: ["RELIANCE", "HDFCBANK", "ICICIBANK", "INFY", "TCS"]
+  
+  trading_hours:
+    pre_open: "09:00"
+    market_open: "09:15"
+    market_close: "15:30"
+    post_close: "16:00"
+  
+  holidays_file: "./configs/holidays.json"
+
+# Data Sources Configuration
+data_sources:
+  # Option Chain Data
+  option_chain:
+    v2:
+      url: "https://www.nseindia.com/json/option-chain/option-chain-v2.json"
+      enabled: true
+      priority: 1
+      refresh_rate: 5  # seconds
+      cache_ttl: 10
+    
+    v3:
+      url: "https://www.nseindia.com/api/option-chain-v3?type=Indices&symbol={symbol}&expiry={expiry}"
+      enabled: true
+      priority: 2
+      refresh_rate: 30
+      cache_ttl: 60
+    
+    contracts:
+      url: "https://www.nseindia.com/api/option-chain-contract-info?symbol={symbol}"
+      enabled: true
+      priority: 5
+      refresh_rate: 3600
+      cache_ttl: 7200
+  
+  # Market Data
+  market_stats:
+    url: "https://www.nseindia.com/api/NextApi/apiClient?functionName=getMarketStatistics"
+    enabled: true
+    priority: 3
+    refresh_rate: 60
+    cache_ttl: 120
+    
+  market_turnover:
+    url: "https://www.nseindia.com/api/NextApi/apiClient?functionName=getMarketTurnover"
+    enabled: true
+    priority: 4
+    refresh_rate: 60
+    cache_ttl: 120
+  
+  # Indices
+  indices:
+    all_indices:
+      url: "https://www.nseindia.com/api/allIndices"
+      enabled: true
+      priority: 6
+      refresh_rate: 30
+      cache_ttl: 60
+    
+    index_chart:
+      url: "https://www.nseindia.com/api/chart-databyindex?index={symbol}"
+      enabled: true
+      priority: 7
+      refresh_rate: 300
+      cache_ttl: 600
+  
+  # Derivatives
+  fii_dii:
+    url: "https://www.nseindia.com/api/fiidiiTradeReact"
+    enabled: true
+    priority: 8
+    refresh_rate: 300
+    cache_ttl: 600
+
+# Fetch Configuration
+fetcher:
+  rate_limiting:
+    max_requests_per_minute: 12
+    max_requests_per_hour: 200
+    max_concurrent_requests: 3
+  
+  retry_policy:
+    max_retries: 3
+    backoff_factor: 2
+    status_codes_to_retry: [429, 500, 502, 503, 504]
+  
+  timeout:
+    connect: 10
+    read: 30
+    total: 45
+  
+  headers:
+    user_agents:
+      - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      - "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      - "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0"
+    
+    default_headers:
+      Accept: "application/json, text/plain, */*"
+      Accept-Language: "en-US,en;q=0.9"
+      Accept-Encoding: "gzip, deflate, br"
+      Connection: "keep-alive"
+      Referer: "https://www.nseindia.com/"
+      Origin: "https://www.nseindia.com"
+      Sec-Fetch-Dest: "empty"
+      Sec-Fetch-Mode: "cors"
+      Sec-Fetch-Site: "same-origin"
+  
+  proxy:
+    enabled: false
+    proxies: []
+    rotate_every: 100
+
+# Analysis Configuration
+analysis:
+  # Greeks Calculation
+  greeks:
+    model: "black_scholes"  # black_scholes, binomial, monte_carlo
+    risk_free_rate: 0.05
+    dividend_yield: 0.01
+    days_in_year: 365
+    
+    # Greeks precision
+    delta_precision: 4
+    gamma_precision: 6
+    theta_precision: 6
+    vega_precision: 6
+    rho_precision: 6
+    
+    # Calculation parameters
+    volatility_surface_points: 5
+    skew_correction: true
+    term_structure: true
+  
+  # Option Chain Analysis
+  options:
+    lookback_strikes: 20  # Strikes to analyze around spot
+    min_oi_threshold: 1000
+    min_volume_threshold: 100
+    
+    pcr_thresholds:
+      extreme_bullish: 0.7
+      bullish: 0.9
+      neutral_lower: 1.0
+      neutral_upper: 1.2
+      bearish: 1.5
+      extreme_bearish: 2.0
+    
+    max_pain:
+      enabled: true
+      calculation_method: "standard"  # standard, weighted, advanced
+      include_futures: false
+    
+    oi_concentration:
+      threshold_percent: 5.0
+      top_n_strikes: 5
+    
+    iv_analysis:
+      skew_calculation: true
+      term_structure: true
+      iv_percentile: true
+      iv_rank: true
+  
+  # Market Analysis
+  market:
+    breadth_indicators:
+      advance_decline_ratio: true
+      trin_index: true
+      arms_index: true
+      tiki_index: true
+    
+    volume_analysis:
+      volume_ratio: true
+      volume_profile: true
+      vwap_deviation: true
+    
+    sentiment:
+      put_call_ratio: true
+      iv_percentile: true
+      vix_analysis: true
+      fear_greed_index: true
+  
+  # Technical Analysis
+  technical:
+    support_resistance:
+      method: "option_oi"  # option_oi, volume_profile, pivot_points
+      levels_count: 3
+      strength_threshold: 0.7
+    
+    patterns:
+      doji_detection: true
+      engulfing_patterns: true
+      hammer_hanging_man: true
+    
+    indicators:
+      rsi: true
+      macd: true
+      bollinger_bands: true
+      atr: true
+  
+  # Risk Analysis
+  risk:
+    value_at_risk:
+      enabled: true
+      confidence_level: 0.95
+      time_horizon: 1  # days
+      
+    greeks_exposure:
+      delta_neutral: false
+      gamma_scalping: false
+      vega_risk: true
+      theta_decay: true
+
+# Storage Configuration
+storage:
+  # Database
+  database:
+    type: "sqlite"  # sqlite, postgresql, mysql
+    path: "./data/market_decoder.db"
+    backup_enabled: true
+    backup_interval: 86400  # seconds
+    
+  # Redis Cache
+  redis:
+    enabled: true
+    host: "localhost"
+    port: 6379
+    db: 0
+    password: ""
+    ttl_default: 300
+    ttl_options: 60
+    ttl_analysis: 600
+    
+  # File Storage
+  files:
+    output_path: "./outputs/"
+    json_output: true
+    csv_output: true
+    excel_output: false
+    keep_days: 30
+
+# Output Configuration
+output:
+  # Console Output
+  console:
+    enabled: true
+    color_codes: true
+    unicode_symbols: true
+    refresh_rate: 5  # seconds for live dashboard
+    
+  # File Output
+  files:
+    json:
+      enabled: true
+      pretty_print: true
+      include_raw: false
+      
+    csv:
+      enabled: true
+      delimiter: ","
+      include_timestamp: true
+    
+  # API Output
+  api:
+    enabled: false
+    host: "0.0.0.0"
+    port: 8000
+    authentication: false
+    
+  # WebSocket
+  websocket:
+    enabled: false
+    port: 8080
+    
+  # Alerts
+  alerts:
+    telegram:
+      enabled: false
+      bot_token: ""
+      chat_id: ""
+    
+    email:
+      enabled: false
+      smtp_server: ""
+      smtp_port: 587
+      username: ""
+      password: ""
+      recipients: []
+    
+    webhook:
+      enabled: false
+      url: ""
+      secret: ""
+
+# Scheduler Configuration
+scheduler:
+  default_interval: 300  # 5 minutes in seconds
+  intervals:
+    high_frequency: 5    # Option chain updates
+    medium_frequency: 60 # Market statistics
+    low_frequency: 300   # Full analysis
+    
+  jobs:
+    - name: "option_chain_update"
+      interval: 5
+      enabled: true
+      
+    - name: "market_stats_update"
+      interval: 60
+      enabled: true
+      
+    - name: "full_analysis"
+      interval: 300
+      enabled: true
+      
+    - name: "risk_assessment"
+      interval: 900
+      enabled: true
+      
+    - name: "report_generation"
+      interval: 3600
+      enabled: true
+
+# Monitoring Configuration
+monitoring:
+  health_check:
+    enabled: true
+    interval: 60
+    
+  metrics:
+    request_latency: true
+    error_rate: true
+    data_freshness: true
+    memory_usage: true
+    
+  alerts:
+    high_error_rate: true
+    threshold: 0.1  # 10%
+    
+    data_stale: true
+    stale_threshold: 300  # 5 minutes
+
+# Backtesting Configuration
+backtesting:
+  enabled: false
+  data_path: "./data/historical/"
+  start_date: "2024-01-01"
+  end_date: "2024-12-31"
+  initial_capital: 1000000
+  commission: 0.0005  # 0.05%
